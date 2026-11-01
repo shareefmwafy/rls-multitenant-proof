@@ -1,0 +1,45 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        # -h localhost forces a TCP check, so the socket-only bootstrap server
+        # the image runs during first-time init does not count as healthy.
+        options: >-
+          --health-cmd "pg_isready -h localhost -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Superuser; db/setup.sh swaps the database segment for rls_proof itself.
+      ADMIN_DATABASE_URL: postgres://postgres:postgres@localhost:5432/rls_proof
+      # Role created by db/001_schema.sql; what the app and tests connect as.
+      DATABASE_URL: postgres://app_user:app_pass@localhost:5432/rls_proof
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - run: npm run db:setup
+      - run: npm run build
+      - run: npm test
