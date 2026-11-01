@@ -40,7 +40,7 @@ Accepted as-is; no changes needed. I ran `npm install` and committed
 `package-lock.json` with the scaffold. Open item carried forward: the
 `.env.example` placeholders chosen here (password `app_user`, database
 `rls_multitenant_proof`) do not match the values fixed in Task 2 (`app_pass`,
-`rls_proof`). Flagged in Tasks 2, 4 and 7; not yet corrected.
+`rls_proof`). Corrected in a follow-up commit after final review.
 
 ## Task 2: Database schema, RLS policy, app role
 
@@ -176,3 +176,5 @@ filled in Task 8 with the output from my own run.
 ## Process issues found during review
 
 While reviewing git log, I found the implementation commit carried the same message as the tests commit (a copy-paste error on my side), and the CI commit had been given the docs message. I fixed both by amending and rebasing before anyone else built on the branch, then force-pushed with --force-with-lease.
+
+A second review pass caught that .env.example still carried the Task 1 placeholder password and database name, which would have broken `cp .env.example .env` for anyone following the README. Fixed and the open item closed.
