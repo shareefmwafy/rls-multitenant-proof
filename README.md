@@ -49,11 +49,40 @@ Two deliberate breaks, each reverted afterwards. No test was modified.
 
 ### Mutation 1: `set_config('app.tenant_id', $1, false)` in `src/db/db.service.ts`
 
-<!-- paste npm test result here -->
+```text
+Tests: 1 failed, 12 passed, 13 total
+Failed:
+  GET /students tenant isolation › leaves no tenant context on the pooled connection after a tenant A request
+```
+
+Only the raw-query-outside-`withTenant` test catches this, because every
+request through `withTenant` overwrites the setting and masks the leak.
 
 ### Mutation 2: `ALTER ROLE app_user BYPASSRLS;`
 
-<!-- paste npm test result here -->
+```text
+Tests: 10 failed, 3 passed, 13 total
+Failed:
+  GET /students tenant isolation › returns exactly the two tenant A rows for tenant A
+  GET /students tenant isolation › returns exactly the one tenant B row for tenant B
+  GET /students tenant isolation › returns an empty list when no tenant header is sent
+  GET /students tenant isolation › does not leak tenant context across sequential requests on a single-connection pool
+  GET /students tenant isolation › leaves no tenant context on the pooled connection after a tenant A request
+  PostgreSQL row-level security on students (connected as app_user) › connects as a role that is neither superuser nor allowed to bypass RLS
+  PostgreSQL row-level security on students (connected as app_user) › returns no rows when app.tenant_id is not set
+  PostgreSQL row-level security on students (connected as app_user) › scopes a transaction-local app.tenant_id to that transaction
+  PostgreSQL row-level security on students (connected as app_user) › negative control: a session-level app.tenant_id leaks across pooled queries
+  PostgreSQL row-level security on students (connected as app_user) › rejects an INSERT for tenant B inside a tenant A transaction
+```
+
+The three survivors (403 for forged/malformed ids, FORCE flag on the table) do
+not depend on the role, which is exactly why the role check test exists.
+
+After reverting both:
+
+```text
+Tests: 13 passed, 13 total
+```
 
 Revert with `ALTER ROLE app_user NOBYPASSRLS;`. Note that `npm run db:setup`
 does not undo it: the role is created only if missing, so attributes on an
